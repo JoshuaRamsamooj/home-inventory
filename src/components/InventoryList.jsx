@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, List } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import ItemCard from './ItemCard';
+import InventoryTable from './InventoryTable';
 import SearchBar from './SearchBar';
 import ItemForm from './ItemForm';
 import { formatLocation } from '../lib/utils';
@@ -9,6 +10,7 @@ import { formatLocation } from '../lib/utils';
 export default function InventoryList() {
     const { items, locations, bins, shelves } = useInventory();
     const [search, setSearch] = useState('');
+    const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
     const [selectedLocationId, setSelectedLocationId] = useState('all');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -52,17 +54,37 @@ export default function InventoryList() {
         };
     };
 
+    const enrichedItems = filteredItems.map(enrichItem);
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                 <h1 className="text-2xl font-bold">Inventory</h1>
-                <button
-                    onClick={() => setIsFormOpen(true)}
-                    className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium transition-colors"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Item
-                </button>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-secondary rounded-md p-1 border">
+                        <button
+                            onClick={() => setViewMode('card')}
+                            className={`p-1.5 rounded-sm transition-colors ${viewMode === 'card' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            title="Card View"
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`p-1.5 rounded-sm transition-colors ${viewMode === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            title="Table View"
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setIsFormOpen(true)}
+                        className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium transition-colors"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Item
+                    </button>
+                </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -86,21 +108,27 @@ export default function InventoryList() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredItems.map(item => (
-                    <ItemCard
-                        key={item.id}
-                        item={enrichItem(item)}
-                        onEdit={handleEdit}
-                        onDelete={() => { }} // Delete handled in card or context
-                    />
-                ))}
-                {filteredItems.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-muted-foreground">
-                        No items found.
-                    </div>
-                )}
-            </div>
+            {viewMode === 'card' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {enrichedItems.map(item => (
+                        <ItemCard
+                            key={item.id}
+                            item={item}
+                            onEdit={handleEdit}
+                        />
+                    ))}
+                    {enrichedItems.length === 0 && (
+                        <div className="col-span-full text-center py-12 text-muted-foreground">
+                            No items found.
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <InventoryTable
+                    items={enrichedItems}
+                    onEdit={handleEdit}
+                />
+            )}
 
             {isFormOpen && (
                 <ItemForm
