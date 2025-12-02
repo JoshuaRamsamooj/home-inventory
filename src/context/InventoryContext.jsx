@@ -14,6 +14,9 @@ export function InventoryProvider({ children }) {
     const [shelves, setShelves] = useState([]);
     const [tags, setTags] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const clearError = () => setError(null);
 
     useEffect(() => {
         Promise.all([
@@ -33,9 +36,9 @@ export function InventoryProvider({ children }) {
                 const data = text ? JSON.parse(text) : { data: [] };
                 if (data.data) setTags(data.data);
             } catch (e) {
-                console.error('Error parsing tags:', text);
+                setError(`Error parsing tags: ${e.message}`);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { setError(e.message); }
     };
 
     const fetchLocations = async () => {
@@ -46,9 +49,9 @@ export function InventoryProvider({ children }) {
                 const data = text ? JSON.parse(text) : { data: [] };
                 if (data.data) setLocations(data.data);
             } catch (e) {
-                console.error('Error parsing locations:', text);
+                setError(`Error parsing locations: ${e.message}`);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { setError(e.message); }
     };
 
     const fetchBins = async () => {
@@ -57,11 +60,13 @@ export function InventoryProvider({ children }) {
             const text = await res.text();
             try {
                 const data = text ? JSON.parse(text) : { data: [] };
-                if (data.data) setBins(data.data);
+                if (data.data) {
+                    setBins(data.data.sort((a, b) => a.name.localeCompare(b.name)));
+                }
             } catch (e) {
-                console.error('Error parsing bins:', text);
+                setError(`Error parsing bins: ${e.message}`);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { setError(e.message); }
     };
 
     const fetchShelves = async () => {
@@ -70,11 +75,13 @@ export function InventoryProvider({ children }) {
             const text = await res.text();
             try {
                 const data = text ? JSON.parse(text) : { data: [] };
-                if (data.data) setShelves(data.data);
+                if (data.data) {
+                    setShelves(data.data.sort((a, b) => a.name.localeCompare(b.name)));
+                }
             } catch (e) {
-                console.error('Error parsing shelves:', text);
+                setError(`Error parsing shelves: ${e.message}`);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { setError(e.message); }
     };
 
     const fetchItems = async () => {
@@ -86,13 +93,13 @@ export function InventoryProvider({ children }) {
                 if (data.data) {
                     setItems(data.data);
                 } else if (data.error) {
-                    console.error('Server error fetching items:', data.error);
+                    setError(`Server error fetching items: ${data.error}`);
                 }
             } catch (e) {
-                console.error('Error parsing items response:', text);
+                setError(`Error parsing items response: ${e.message}`);
             }
         } catch (error) {
-            console.error('Error fetching items:', error);
+            setError(`Error fetching items: ${error.message}`);
         }
     };
 
@@ -109,7 +116,7 @@ export function InventoryProvider({ children }) {
                 fetchTags();
             }
         } catch (error) {
-            console.error('Error adding item:', error);
+            setError(`Error adding item: ${error.message}`);
         }
     };
 
@@ -125,7 +132,7 @@ export function InventoryProvider({ children }) {
                 fetchTags();
             }
         } catch (error) {
-            console.error('Error updating item:', error);
+            setError(`Error updating item: ${error.message}`);
         }
     };
 
@@ -138,7 +145,7 @@ export function InventoryProvider({ children }) {
                 setItems(prev => prev.filter(item => item.id !== id));
             }
         } catch (error) {
-            console.error('Error deleting item:', error);
+            setError(`Error deleting item: ${error.message}`);
         }
     };
 
@@ -153,13 +160,11 @@ export function InventoryProvider({ children }) {
             });
 
             const text = await res.text();
-            console.log(`AddLocation Response: Status ${res.status}, Body: "${text}"`);
-
             let json;
             try {
                 json = text ? JSON.parse(text) : {};
             } catch (e) {
-                console.error('Failed to parse JSON:', text);
+                setError(`Failed to parse JSON: ${text}`);
                 throw e;
             }
 
@@ -169,11 +174,11 @@ export function InventoryProvider({ children }) {
                 fetchShelves();
                 return true;
             } else {
-                console.error('Server error:', json);
+                setError(`Server error: ${JSON.stringify(json)}`);
                 return false;
             }
 
-        } catch (e) { console.error(e); return false; }
+        } catch (e) { setError(e.message); return false; }
     };
 
     const updateLocation = async (id, data) => {
@@ -193,7 +198,7 @@ export function InventoryProvider({ children }) {
             }
             return false;
         } catch (e) {
-            console.error('Error updating location:', e);
+            setError(`Error updating location: ${e.message}`);
             return false;
         }
     };
@@ -210,7 +215,7 @@ export function InventoryProvider({ children }) {
                 setBins(prev => [...prev, json.data]);
                 return true;
             }
-        } catch (e) { console.error(e); return false; }
+        } catch (e) { setError(e.message); return false; }
     };
 
     const addShelf = async (data) => {
@@ -225,7 +230,7 @@ export function InventoryProvider({ children }) {
                 setShelves(prev => [...prev, json.data]);
                 return true;
             }
-        } catch (e) { console.error(e); return false; }
+        } catch (e) { setError(e.message); return false; }
     };
 
     const updateBin = async (id, data) => {
@@ -240,7 +245,7 @@ export function InventoryProvider({ children }) {
                 setBins(prev => prev.map(b => b.id === id ? json.data : b));
                 return true;
             }
-        } catch (e) { console.error(e); return false; }
+        } catch (e) { setError(e.message); return false; }
     };
 
     const updateShelf = async (id, data) => {
@@ -255,7 +260,7 @@ export function InventoryProvider({ children }) {
                 setShelves(prev => prev.map(s => s.id === id ? json.data : s));
                 return true;
             }
-        } catch (e) { console.error(e); return false; }
+        } catch (e) { setError(e.message); return false; }
     };
 
     return (
@@ -274,7 +279,9 @@ export function InventoryProvider({ children }) {
             addShelf,
             updateBin,
             updateShelf,
-            loading
+            loading,
+            error,
+            clearError
         }}>
             {children}
         </InventoryContext.Provider>

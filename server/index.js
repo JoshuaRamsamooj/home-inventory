@@ -42,16 +42,12 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/locations', (req, res) => {
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
     const { name, description, bins, shelves } = req.body;
 
     if (!name) {
         console.error('Missing name in request body');
         return res.status(400).json({ error: 'Name is required' });
     }
-
-    console.log('Received create location request:', { name, description, bins, shelves });
 
     // Direct insertion without transaction for debugging stability
     db.run('INSERT INTO locations (name, description) VALUES (?, ?)', [name, description], function (err) {
@@ -64,7 +60,6 @@ app.post('/api/locations', (req, res) => {
         }
 
         const locationId = this.lastID;
-        console.log('Location created, ID:', locationId);
 
         if (bins && Array.isArray(bins)) {
             bins.forEach(binName => {
@@ -82,7 +77,6 @@ app.post('/api/locations', (req, res) => {
             });
         }
 
-        console.log('Location created successfully');
         res.json({ data: { id: locationId, name, description, bins, shelves } });
     });
 });
@@ -184,10 +178,8 @@ app.delete('/api/bins/:id', (req, res) => {
 
 // --- SHELVES ---
 app.get('/api/shelves', (req, res) => {
-    console.log('Fetching shelves...');
     db.all('SELECT * FROM shelves', [], (err, rows) => {
         if (err) return res.status(400).json({ error: err.message });
-        console.log('Shelves fetched successfully');
         res.json({ data: rows });
     });
 });
