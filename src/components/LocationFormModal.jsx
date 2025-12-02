@@ -73,6 +73,12 @@ export default function LocationFormModal({ initialData, onClose }) {
     setFormData(prev => ({ ...prev, bins: prev.bins.filter((_, i) => i !== index) }));
   };
 
+  const updateBinName = (index, newName) => {
+    const newBins = [...formData.bins];
+    newBins[index] = { ...newBins[index], name: newName };
+    setFormData(prev => ({ ...prev, bins: newBins }));
+  };
+
   const addShelf = () => {
     if (newShelf.trim()) {
       setFormData(prev => ({
@@ -85,6 +91,12 @@ export default function LocationFormModal({ initialData, onClose }) {
 
   const removeShelf = (index) => {
     setFormData(prev => ({ ...prev, shelves: prev.shelves.filter((_, i) => i !== index) }));
+  };
+
+  const updateShelfName = (index, newName) => {
+    const newShelves = [...formData.shelves];
+    newShelves[index] = { ...newShelves[index], name: newName };
+    setFormData(prev => ({ ...prev, shelves: newShelves }));
   };
 
   return (
@@ -132,16 +144,22 @@ export default function LocationFormModal({ initialData, onClose }) {
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-2">
               {formData.bins.map((bin, index) => (
-                <div key={index} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded text-sm group">
-                  <span>{bin.name}</span>
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={bin.name}
+                    onChange={(e) => updateBinName(index, e.target.value)}
+                    className="flex-1 px-2 py-1 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                   <button
                     type="button"
                     onClick={() => removeBin(index)}
-                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Remove Bin"
                   >
-                    <X className="w-3 h-3" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -168,16 +186,22 @@ export default function LocationFormModal({ initialData, onClose }) {
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-2">
               {formData.shelves.map((shelf, index) => (
-                <div key={index} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded text-sm group">
-                  <span>{shelf.name}</span>
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={shelf.name}
+                    onChange={(e) => updateShelfName(index, e.target.value)}
+                    className="flex-1 px-2 py-1 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                   <button
                     type="button"
                     onClick={() => removeShelf(index)}
-                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Remove Shelf"
                   >
-                    <X className="w-3 h-3" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
