@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Filter, LayoutGrid, List } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, List, ArrowUpDown } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import ItemCard from './ItemCard';
 import InventoryTable from './InventoryTable';
@@ -12,6 +12,7 @@ export default function InventoryList() {
     const [search, setSearch] = useState('');
     const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
     const [selectedLocationId, setSelectedLocationId] = useState('all');
+    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
 
@@ -30,6 +31,30 @@ export default function InventoryList() {
             return matchesSearch && matchesLocation;
         });
     }, [items, search, selectedLocationId]);
+
+    const sortedItems = useMemo(() => {
+        let sortableItems = [...filteredItems];
+        if (sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === 'asc' ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [filteredItems, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const handleEdit = (item) => {
         setEditingItem(item);
@@ -54,7 +79,7 @@ export default function InventoryList() {
         };
     };
 
-    const enrichedItems = filteredItems.map(enrichItem);
+    const enrichedItems = sortedItems.map(enrichItem);
 
     return (
         <div className="space-y-6">
@@ -75,6 +100,20 @@ export default function InventoryList() {
                             title="Table View"
                         >
                             <List className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div className="flex items-center bg-secondary rounded-md p-1 border">
+                        <button
+                            onClick={() => requestSort('name')}
+                            className="flex items-center gap-1 px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            title="Sort by Name"
+                        >
+                            <ArrowUpDown className="w-4 h-4" />
+                            <span className="hidden sm:inline">
+                                {sortConfig.key === 'name'
+                                    ? (sortConfig.direction === 'asc' ? 'Name (A-Z)' : 'Name (Z-A)')
+                                    : 'Sort'}
+                            </span>
                         </button>
                     </div>
                     <button
@@ -127,6 +166,8 @@ export default function InventoryList() {
                 <InventoryTable
                     items={enrichedItems}
                     onEdit={handleEdit}
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
                 />
             )}
 

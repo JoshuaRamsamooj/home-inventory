@@ -1,9 +1,8 @@
-import React from 'react';
-import { Edit, Trash2, Tag, MapPin } from 'lucide-react';
+import { Edit, Trash2, Tag, MapPin, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import { formatLocation } from '../lib/utils';
 
-export default function InventoryTable({ items, onEdit }) {
+export default function InventoryTable({ items, onEdit, sortConfig, onSort }) {
     const { deleteItem, updateItem } = useInventory();
 
     const handleQuantityChange = (item, delta) => {
@@ -11,12 +10,32 @@ export default function InventoryTable({ items, onEdit }) {
         updateItem(item.id, { ...item, quantity: newQuantity });
     };
 
+
+
+    const getSortIcon = (name) => {
+        if (sortConfig.key !== name) {
+            return <ArrowUpDown className="w-4 h-4 ml-1 text-muted-foreground/50" />;
+        }
+        if (sortConfig.direction === 'asc') {
+            return <ArrowUp className="w-4 h-4 ml-1 text-primary" />;
+        }
+        return <ArrowDown className="w-4 h-4 ml-1 text-primary" />;
+    };
+
     return (
         <div className="rounded-md border">
             <table className="w-full text-sm text-left">
                 <thead className="bg-muted/50 text-muted-foreground font-medium">
                     <tr>
-                        <th className="p-4">Name</th>
+                        <th
+                            className="p-4 cursor-pointer hover:bg-muted/80 transition-colors select-none group"
+                            onClick={() => onSort('name')}
+                        >
+                            <div className="flex items-center">
+                                Name
+                                {getSortIcon('name')}
+                            </div>
+                        </th>
                         <th className="p-4">Description</th>
                         <th className="p-4">Location</th>
                         <th className="p-4">Tags</th>
