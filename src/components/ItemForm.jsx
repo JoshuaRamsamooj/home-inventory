@@ -15,6 +15,7 @@ export default function ItemForm({ item, onClose }) {
         shelf_id: '',
         tags: [] // Now an array of strings
     });
+    const [showSuccess, setShowSuccess] = useState(false);
 
     // Set default location
     useEffect(() => {
@@ -41,7 +42,7 @@ export default function ItemForm({ item, onClose }) {
         }
     }, [item]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e, shouldClose = true) => {
         e.preventDefault();
         const data = {
             ...formData,
@@ -52,11 +53,25 @@ export default function ItemForm({ item, onClose }) {
         };
 
         if (item) {
-            updateItem(item.id, data);
+            await updateItem(item.id, data);
         } else {
-            addItem(data);
+            await addItem(data);
         }
-        onClose();
+
+        if (shouldClose) {
+            onClose();
+        } else {
+            // Reset form but keep location data
+            setFormData(prev => ({
+                ...prev,
+                name: '',
+                description: '',
+                quantity: 1,
+                tags: []
+            }));
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 2000);
+        }
     };
 
     return (
@@ -71,7 +86,13 @@ export default function ItemForm({ item, onClose }) {
 
                 <h2 className="text-lg font-semibold mb-4">{item ? 'Edit Item' : 'Add New Item'}</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                {showSuccess && (
+                    <div className="mb-4 p-2 bg-green-100 text-green-800 rounded text-sm text-center animate-in fade-in slide-in-from-top-1">
+                        Item added successfully!
+                    </div>
+                )}
+
+                <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Name</label>
                         <input
@@ -167,6 +188,15 @@ export default function ItemForm({ item, onClose }) {
                         >
                             {item ? 'Save Changes' : 'Add Item'}
                         </button>
+                        {!item && (
+                            <button
+                                type="button"
+                                onClick={(e) => handleSubmit(e, false)}
+                                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 text-sm font-medium transition-colors border border-input"
+                            >
+                                Save & Add Another
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>
