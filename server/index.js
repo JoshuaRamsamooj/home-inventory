@@ -314,30 +314,23 @@ app.get('/api/items', (req, res) => {
         LIMIT ? OFFSET ?
     `;
 
-    log(`Executing countSql: ${countSql} Params: ${JSON.stringify(params)}`);
-
     db.get(countSql, params, (err, countRow) => {
         if (err) {
             console.error('Error counting items:', err);
             return res.status(500).json({ error: err.message });
         }
 
-        log(`Count result: ${JSON.stringify(countRow)}`);
         const total = countRow ? countRow.total : 0;
         const totalPages = Math.ceil(total / limit);
 
         // Add limit and offset to params for data query
         const dataParams = [...params, limit, offset];
 
-        log(`Executing dataSql: ${dataSql} Params: ${JSON.stringify(dataParams)}`);
-
         db.all(dataSql, dataParams, (err, rows) => {
             if (err) {
                 console.error('Error fetching items:', err);
                 return res.status(500).json({ error: err.message });
             }
-
-            log(`Data result rows: ${rows ? rows.length : 0}`);
 
             const items = rows.map(item => ({
                 ...item,
