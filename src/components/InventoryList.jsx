@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Filter, LayoutGrid, List, ArrowUpDown } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, List, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import ItemCard from './ItemCard';
 import InventoryTable from './InventoryTable';
@@ -8,53 +8,45 @@ import ItemForm from './ItemForm';
 import { formatLocation } from '../lib/utils';
 
 export default function InventoryList() {
-    const { items, locations, bins, shelves } = useInventory();
-    const [search, setSearch] = useState('');
+    const {
+        items,
+        locations,
+        bins,
+        shelves,
+        pagination,
+        filters,
+        sorting,
+        setPage,
+        setLimit,
+        setFilters,
+        setSorting
+    } = useInventory();
+
     const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
-    const [selectedLocationId, setSelectedLocationId] = useState('all');
-    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
 
-    const filteredItems = useMemo(() => {
-        return items.filter(item => {
-            const matchesSearch =
-                item.name.toLowerCase().includes(search.toLowerCase()) ||
-                item.description.toLowerCase().includes(search.toLowerCase()) ||
-                (item.tags && item.tags.some(tag => {
-                    const tagName = typeof tag === 'object' ? tag.name : tag;
-                    return tagName.toLowerCase().includes(search.toLowerCase());
-                }));
+    // Debounce search update
+    const handleSearchChange = (value) => {
+        setFilters(prev => ({ ...prev, search: value }));
+    };
 
-            const matchesLocation = selectedLocationId === 'all' || item.location_id == selectedLocationId;
-
-            return matchesSearch && matchesLocation;
-        });
-    }, [items, search, selectedLocationId]);
-
-    const sortedItems = useMemo(() => {
-        let sortableItems = [...filteredItems];
-        if (sortConfig.key) {
-            sortableItems.sort((a, b) => {
-                if (a[sortConfig.key] < b[sortConfig.key]) {
-                    return sortConfig.direction === 'asc' ? -1 : 1;
-                }
-                if (a[sortConfig.key] > b[sortConfig.key]) {
-                    return sortConfig.direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-        return sortableItems;
-    }, [filteredItems, sortConfig]);
+    const handleLocationChange = (e) => {
+        setFilters(prev => ({ ...prev, location_id: e.target.value }));
+        setPage(1); // Reset to page 1 on filter change
+    };
 
     const requestSort = (key) => {
         let direction = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+        if (sorting.key === key && sorting.direction === 'asc') {
             direction = 'desc';
         }
-        setSortConfig({ key, direction });
+        setSorting({ key, direction });
     };
+
+
+
+
 
     const handleEdit = (item) => {
         setEditingItem(item);
@@ -79,7 +71,7 @@ export default function InventoryList() {
         };
     };
 
-    const enrichedItems = sortedItems.map(enrichItem);
+    const enrichedItems = items.map(enrichItem);
 
     return (
         <div className="space-y-6">
@@ -110,8 +102,8 @@ export default function InventoryList() {
                         >
                             <ArrowUpDown className="w-4 h-4" />
                             <span className="hidden sm:inline">
-                                {sortConfig.key === 'name'
-                                    ? (sortConfig.direction === 'asc' ? 'Name (A-Z)' : 'Name (Z-A)')
+                                {sorting.key === 'name'
+                                    ? (sorting.direction === 'asc' ? 'Name (A-Z)' : 'Name (Z-A)')
                                     : 'Sort'}
                             </span>
                         </button>
@@ -128,14 +120,14 @@ export default function InventoryList() {
 
             <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
-                    <SearchBar value={search} onChange={setSearch} />
+                    <SearchBar value={filters.search} onChange={handleSearchChange} />
                 </div>
                 <div className="w-full sm:w-48">
                     <div className="relative">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <select
-                            value={selectedLocationId}
-                            onChange={(e) => setSelectedLocationId(e.target.value)}
+                            value={filters.location_id}
+                            onChange={handleLocationChange}
                             className="w-full pl-9 pr-4 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
                         >
                             <option value="all">All Locations</option>
@@ -166,10 +158,44 @@ export default function InventoryList() {
                 <InventoryTable
                     items={enrichedItems}
                     onEdit={handleEdit}
-                    sortConfig={sortConfig}
+                    sortConfig={sorting}
                     onSort={requestSort}
                 />
             )}
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between border-t pt-4 gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                        Page {pagination.page} of {pagination.totalPages || 1} ({pagination.total} items)
+                    </div>
+                    <select
+                        value={pagination.limit}
+                        onChange={(e) => setLimit(Number(e.target.value))}
+                        className="px-2 py-1 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                        <option value={10}>10 per page</option>
+                        <option value={20}>20 per page</option>
+                        <option value={50}>50 per page</option>
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setPage(pagination.page - 1)}
+                        disabled={pagination.page <= 1}
+                        className="p-2 rounded-md border hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setPage(pagination.page + 1)}
+                        disabled={pagination.page >= pagination.totalPages}
+                        className="p-2 rounded-md border hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
 
             {isFormOpen && (
                 <ItemForm

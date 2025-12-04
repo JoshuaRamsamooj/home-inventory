@@ -16,17 +16,41 @@ export function InventoryProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Pagination, Sorting, Filtering State
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0
+    });
+    const [filters, setFilters] = useState({
+        search: '',
+        location_id: 'all'
+    });
+    const [sorting, setSorting] = useState({
+        key: 'name',
+        direction: 'asc'
+    });
+
     const clearError = () => setError(null);
 
+    // Initial load of static data
     useEffect(() => {
         Promise.all([
-            fetchItems(),
             fetchLocations(),
             fetchBins(),
             fetchShelves(),
             fetchTags()
-        ]).finally(() => setLoading(false));
+        ]).catch(e => setError(e.message));
     }, []);
+
+    // Fetch items whenever params change
+    useEffect(() => {
+        fetchItems();
+    }, [pagination.page, pagination.limit, filters, sorting]);
+
+    const setPage = (page) => setPagination(prev => ({ ...prev, page }));
+    const setLimit = (limit) => setPagination(prev => ({ ...prev, limit, page: 1 })); // Reset to page 1 on limit change
 
     const fetchTags = async () => {
         try {
@@ -85,13 +109,30 @@ export function InventoryProvider({ children }) {
     };
 
     const fetchItems = async () => {
+        setLoading(true);
         try {
-            const response = await fetch('/api/items');
+            const queryParams = new URLSearchParams({
+                page: pagination.page,
+                limit: pagination.limit,
+                sort: sorting.key,
+                order: sorting.direction,
+                search: filters.search,
+                location_id: filters.location_id
+            });
+
+            const response = await fetch(`/api/items?${queryParams}`);
             const text = await response.text();
             try {
-                const data = text ? JSON.parse(text) : { data: [] };
+                const data = text ? JSON.parse(text) : { data: [], meta: {} };
                 if (data.data) {
                     setItems(data.data);
+                    if (data.meta) {
+                        setPagination(prev => ({
+                            ...prev,
+                            total: data.meta.total,
+                            totalPages: data.meta.totalPages
+                        }));
+                    }
                 } else if (data.error) {
                     setError(`Server error fetching items: ${data.error}`);
                 }
@@ -100,6 +141,8 @@ export function InventoryProvider({ children }) {
             }
         } catch (error) {
             setError(`Error fetching items: ${error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -112,7 +155,7 @@ export function InventoryProvider({ children }) {
                 body: JSON.stringify(newItem),
             });
             if (response.ok) {
-                setItems(prev => [...prev, newItem]);
+                fetchItems(); // Refresh list
                 fetchTags();
             }
         } catch (error) {
@@ -128,7 +171,7 @@ export function InventoryProvider({ children }) {
                 body: JSON.stringify(updates),
             });
             if (response.ok) {
-                setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates, updatedAt: new Date().toISOString() } : item));
+                fetchItems(); // Refresh list
                 fetchTags();
             }
         } catch (error) {
@@ -142,7 +185,7 @@ export function InventoryProvider({ children }) {
                 method: 'DELETE',
             });
             if (response.ok) {
-                setItems(prev => prev.filter(item => item.id !== id));
+                fetchItems(); // Refresh list
             }
         } catch (error) {
             setError(`Error deleting item: ${error.message}`);
@@ -281,7 +324,15 @@ export function InventoryProvider({ children }) {
             updateShelf,
             loading,
             error,
-            clearError
+            clearError,
+            // Pagination & Sorting
+            pagination,
+            filters,
+            sorting,
+            setPage,
+            setLimit,
+            setFilters,
+            setSorting
         }}>
             {children}
         </InventoryContext.Provider>

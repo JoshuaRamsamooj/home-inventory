@@ -270,28 +270,90 @@ const handleItemTags = async (itemId, tags) => {
     }
 };
 
-// Get all items with tags
+// Get items with pagination, sorting, and filtering
 app.get('/api/items', (req, res) => {
-    const sql = `
+    const {
+        page = 1,
+        limit = 10,
+        sort = 'name',
+        order = 'asc',
+        search = '',
+        location_id = 'all'
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+    const params = [];
+    let whereClause = 'WHERE 1=1';
+
+    if (search) {
+        whereClause += ` AND (i.name LIKE ? OR i.description LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (location_id !== 'all') {
+        whereClause += ` AND i.location_id = ?`;
+        params.push(location_id);
+    }
+
+    // Validate sort column to prevent SQL injection
+    const validSortColumns = ['name', 'quantity', 'createdAt', 'updatedAt'];
+    const sortColumn = validSortColumns.includes(sort) ? sort : 'name';
+    const sortOrder = order === 'desc' ? 'DESC' : 'ASC';
+
+    const countSql = `SELECT COUNT(*) as total FROM items i ${whereClause}`;
+
+    const dataSql = `
         SELECT i.*, 
                json_group_array(json_object('id', t.id, 'name', t.name)) as tags
         FROM items i
         LEFT JOIN item_tags it ON i.id = it.item_id
         LEFT JOIN tags t ON it.tag_id = t.id
+        ${whereClause}
         GROUP BY i.id
+        ORDER BY i.${sortColumn} ${sortColumn === 'name' ? 'COLLATE NOCASE' : ''} ${sortOrder}
+        LIMIT ? OFFSET ?
     `;
 
-    db.all(sql, [], (err, rows) => {
+    log(`Executing countSql: ${countSql} Params: ${JSON.stringify(params)}`);
+
+    db.get(countSql, params, (err, countRow) => {
         if (err) {
-            console.error('Error fetching items:', err);
+            console.error('Error counting items:', err);
             return res.status(500).json({ error: err.message });
         }
 
-        const items = rows.map(item => ({
-            ...item,
-            tags: item.tags ? JSON.parse(item.tags).filter(t => t.id !== null) : []
-        }));
-        res.json({ data: items });
+        log(`Count result: ${JSON.stringify(countRow)}`);
+        const total = countRow ? countRow.total : 0;
+        const totalPages = Math.ceil(total / limit);
+
+        // Add limit and offset to params for data query
+        const dataParams = [...params, limit, offset];
+
+        log(`Executing dataSql: ${dataSql} Params: ${JSON.stringify(dataParams)}`);
+
+        db.all(dataSql, dataParams, (err, rows) => {
+            if (err) {
+                console.error('Error fetching items:', err);
+                return res.status(500).json({ error: err.message });
+            }
+
+            log(`Data result rows: ${rows ? rows.length : 0}`);
+
+            const items = rows.map(item => ({
+                ...item,
+                tags: item.tags ? JSON.parse(item.tags).filter(t => t.id !== null) : []
+            }));
+
+            res.json({
+                data: items,
+                meta: {
+                    total,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages
+                }
+            });
+        });
     });
 });
 
