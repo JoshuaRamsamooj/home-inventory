@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Plus, Package, Layers, MapPin } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import LocationFormModal from './LocationFormModal';
+import MoveBinModal from './MoveBinModal';
 
 export default function LocationManager() {
     const { locations, bins, shelves } = useInventory();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState(null);
+    const [binToMove, setBinToMove] = useState(null);
 
     const handleClose = () => {
         setIsModalOpen(false);
@@ -55,9 +57,14 @@ export default function LocationManager() {
                                 </div>
                                 <div className="pl-6 flex flex-wrap gap-1">
                                     {getBinsForLocation(loc.id).map(b => (
-                                        <span key={b.id} className="inline-block px-2 py-0.5 bg-secondary rounded text-xs">
+                                        <button
+                                            key={b.id}
+                                            onClick={() => setBinToMove(b)}
+                                            className="inline-block px-2 py-0.5 bg-secondary hover:bg-secondary/80 rounded text-xs transition-colors cursor-pointer"
+                                            title="Click to move bin"
+                                        >
                                             {b.name}
-                                        </span>
+                                        </button>
                                     ))}
                                     {getBinsForLocation(loc.id).length === 0 && <span className="italic">None</span>}
                                 </div>
@@ -94,6 +101,13 @@ export default function LocationManager() {
                         handleClose();
                         setSelectedLocation(null);
                     }}
+                />
+            )}
+
+            {binToMove && (
+                <MoveBinModal
+                    bin={binToMove}
+                    onClose={() => setBinToMove(null)}
                 />
             )}
         </div>
